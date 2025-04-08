@@ -2,11 +2,13 @@ import argparse
 import os
 import boto3
 import time
+import torch
 from dotenv import load_dotenv
 from services.transcribe_service import processFile
 
 def main():
     #load_dotenv()
+    torch_variable = str(torch.cuda.is_available())
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
     bucket_name = "whisper-audiotest"
@@ -49,6 +51,7 @@ def main():
     with open(text_file_path, "w", encoding="utf-8") as f:
         f.write(answer)
         f.write(f"\n\n⏱️ Файл был обработан за {duration} секунд.")
+        f.write(f"\n\n⏱️ Доступность CUDA: {torch_variable}.")
 
     print(f"📝 Ответ сохранён в файл: {text_file_path}")
 
