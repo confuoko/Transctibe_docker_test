@@ -1,57 +1,33 @@
-
-import whisper
+from services.model_loader import (
+    load_whisper_model,
+    load_speechbrain_encoder
+)
 from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
-from speechbrain.pretrained import EncoderClassifier
 from sklearn.cluster import KMeans
-from transformers import AutoTokenizer
 import os
 
+# === Загружаем модели из кэша ===
+whisper_model = load_whisper_model()
+speechbrain_model = load_speechbrain_encoder()
 
-BERT_MODEL_NAME = 'bert-base-multilingual-cased'
-TRANSCRIBE_MODEL_NAME = 'medium'
-
-from huggingface_hub import login
-from dotenv import load_dotenv
-
-load_dotenv()
-
-
-hf_token = os.getenv("HF_TOKEN")
-if hf_token:
-    login(hf_token)
-else:
-    raise ValueError("Hugging Face token not found in environment variables.")
-
-
-login(hf_token)
-tokenizer = AutoTokenizer.from_pretrained(BERT_MODEL_NAME)
-
+# === Транскрипция ===
 def transcribe(file_path):
-	print("TRANSCRIBING..")
-	model = whisper.load_model(TRANSCRIBE_MODEL_NAME)
-	return model.transcribe(file_path)
+    print("TRANSCRIBING...")
+    return whisper_model.transcribe(file_path)
 
-
+# === Диаризация ===
 def diarize(file_path):
-    print("DIARIZING..")
+    print("DIARIZING...")
     vad_model = load_silero_vad()
-
     audio = read_audio(file_path)
-
     speech_timestamps = get_speech_timestamps(audio, vad_model, return_seconds=True)
-
-    embedding_model = EncoderClassifier.from_hparams(
-        source="speechbrain/spkrec-ecapa-voxceleb",
-        savedir="pretrained_models"
-    )
 
     embeddings = []
     for segment in speech_timestamps:
         start = int(segment['start'] * 16000)
         end = int(segment['end'] * 16000)
-        segment_wav = audio[start:end]
-        segment_wav = segment_wav.unsqueeze(0)
-        embedding = embedding_model.encode_batch(segment_wav)
+        segment_wav = audio[start:end].unsqueeze(0)
+        embedding = speechbrain_model.encode_batch(segment_wav)
         embeddings.append(embedding.squeeze().numpy())
 
     kmeans = KMeans(n_clusters=2)
