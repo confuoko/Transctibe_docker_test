@@ -2,6 +2,8 @@ import argparse
 import os
 import boto3
 import time
+
+import requests
 import torch
 from services.transcribe_service import processFile, update_record
 import runpod
@@ -17,11 +19,11 @@ def handler(event):
     print(torch_variable)
     # Получает от сервиса шумоподавления очищенное аудио и id
 
-    #file_key = event['input']['file_key']
-    #item_id = event['input']['item_id']
+    file_key = event['input']['file_key']
+    item_id = event['input']['item_id']
 
-    file_key = 'interview1.wav'
-    item_id = 1
+    #file_key = 'interview1.wav'
+    #item_id = 1
 
     print(f"Получен запрос на транскрибацию файла: {file_key}")
     print(f"ID элемента: {item_id}")
@@ -81,10 +83,31 @@ def handler(event):
     # пушим данные в БД
     update_record(item_id, text_filename)
 
-    # Отправляем запрос в сервис Кластеризации
+    # Отправляем запрос в сервис Кластеризации: item_id, text_filename
+    # Переменные для сервиса транскрибации
+    RUNPOD_AUTH_TOKEN = os.getenv("RUNPOD_AUTH_TOKEN")
+    CLASTERIZATOR_QUEUE = os.getenv("CLASTERIZATOR_QUEUE")
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': RUNPOD_AUTH_TOKEN
+    }
+
+    data = {
+        "input": {
+            "file_key": text_filename,
+            "item_id": item_id
+        }
+    }
+    print(f"Направляю файл: {text_filename} и ID записи: {item_id}")
+    response = requests.post(f'https://api.runpod.ai/v2/{CLASTERIZATOR_QUEUE}/run', headers=headers, json=data)
+
+    print(f"Статус ответа: {response.status_code}")
+    print(f"Тело ответа: {response.text}")
+    print(f"Отправляем запрос к сервису Кластеризации. Ответ: {response.json()}")
 
 
 if __name__ == '__main__':
-    #runpod.serverless.start({'handler': handler})
-    handler(None)
+    runpod.serverless.start({'handler': handler})
+    #handler(None)
 
