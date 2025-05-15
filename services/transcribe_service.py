@@ -1,3 +1,5 @@
+import psycopg2
+
 from services.model_loader import (
     load_whisper_model,
     load_speechbrain_encoder
@@ -5,6 +7,7 @@ from services.model_loader import (
 from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
 from sklearn.cluster import KMeans
 import os
+from dotenv import load_dotenv
 
 # === Загружаем модели из кэша ===
 whisper_model = load_whisper_model()
@@ -91,3 +94,37 @@ def processFile(file_name):
     diarized_result, labels = diarize(file_path)
     processed_results = unite_results(transcribed_result, diarized_result, labels)
     return processed_results
+
+
+def update_record(record_id, name_audio_to_txt):
+    # Загрузка переменных из .env
+    load_dotenv()
+
+    # Получаем connection string
+    connection_string = os.getenv('DATABASE_URL')
+
+    try:
+        # Подключение к БД
+        connection = psycopg2.connect(connection_string)
+        print("Успешное подключение к БД")
+        cursor = connection.cursor()
+
+        # Обновление нескольких полей
+        update_query = """
+            UPDATE myusers_callitem
+            SET name_audio_to_txt = %s
+            WHERE id = %s;
+        """
+        cursor.execute(update_query, (name_audio_to_txt, record_id))
+        connection.commit()
+
+        print(f"Запись с id={record_id} успешно обновлена.")
+
+    except Exception as e:
+        print(f"Ошибка при обновлении записи: {e}")
+
+    finally:
+        # Закрытие соединения
+        if connection:
+            cursor.close()
+            connection.close()

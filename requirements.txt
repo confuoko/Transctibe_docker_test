@@ -2,8 +2,6 @@ uvicorn
 
 pyannote.audio
 openai-whisper
-torchaudio
-torch
 python-Levenshtein
 pydu
 speechbrain
@@ -19,3 +17,10 @@ datasets
 python-dotenv
 
 boto3
+
+runpod
+
+# Torch
+#--index-url https://download.pytorch.org/whl/cu126
+torch
+torchaudio

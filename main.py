@@ -3,21 +3,30 @@ import os
 import boto3
 import time
 import torch
+from services.transcribe_service import processFile, update_record
+import runpod
 from dotenv import load_dotenv
-from services.transcribe_service import processFile
 
-def main():
-    #load_dotenv()
+
+def handler(event):
     torch_variable = str(torch.cuda.is_available())
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
     bucket_name = "whisper-audiotest"
 
-    parser = argparse.ArgumentParser(description="Transcribe file from S3")
-    parser.add_argument("-file", required=True, help="Название файла (ключ в S3)")
-    args = parser.parse_args()
-    file_key = args.file
+    print(torch_variable)
+    # Получает от сервиса шумоподавления очищенное аудио и id
 
+    #file_key = event['input']['file_key']
+    #item_id = event['input']['item_id']
+
+    file_key = 'interview1.wav'
+    item_id = 1
+
+    print(f"Получен запрос на транскрибацию файла: {file_key}")
+    print(f"ID элемента: {item_id}")
+
+    load_dotenv()
     s3 = boto3.client(
         's3',
         endpoint_url="http://storage.yandexcloud.net",
@@ -68,5 +77,14 @@ def main():
     os.remove(temp_file_path)
     print("🧹 Временные файлы удалены.")
 
-if __name__ == "__main__":
-    main()
+    # Сохраняем имя текстового файла в БД
+    # пушим данные в БД
+    update_record(item_id, text_filename)
+
+    # Отправляем запрос в сервис Кластеризации
+
+
+if __name__ == '__main__':
+    #runpod.serverless.start({'handler': handler})
+    handler(None)
+
